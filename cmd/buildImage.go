@@ -4,7 +4,6 @@ import (
 	"archive/tar"
 	"bytes"
 	"context"
-	"fmt"
 	"io"
 	"log"
 	"os"
@@ -13,12 +12,17 @@ import (
 	"github.com/docker/docker/client"
 )
 
+func HandleError(e error, msg string) {
+	if e != nil {
+		log.Fatal(e, msg)
+	}
+}
+
 func BuildImage(buildContextDir, tagName string) {
+
 	ctx := context.Background()
 	cli, err := client.NewEnvClient()
-	if err != nil {
-		log.Fatal(err, " :unable to init client")
-	}
+	HandleError(err,  ":unable to init client")
 
 	buf := new(bytes.Buffer)
 	tw := tar.NewWriter(buf)
@@ -36,56 +40,45 @@ func BuildImage(buildContextDir, tagName string) {
 			Dockerfile: "Dockerfile",
 			Tags:       []string{tagName},
 			Remove:     true})
-	if err != nil {
-		log.Fatal(err, " :unable to build docker image")
-	}
+	HandleError(err, " :unable to build docker image")
+
 	defer imageBuildResponse.Body.Close()
 	_, err = io.Copy(os.Stdout, imageBuildResponse.Body)
-	if err != nil {
-		log.Fatal(err, " :unable to read image build response")
-	}
+	HandleError(err, " :unable to read image build response")
 }
 
-func ScanDir(dirPath string, tw *tar.Writer) {
+func ScanDir(dirPath string, tw *tar.Writer) error {
 	dir, err := os.Open(dirPath)
-	handleError(err)
+	HandleError(err, " :unable open the given path for reading")
 	defer dir.Close()
+
 	fis, err := dir.Readdir(0)
-	for _, f := range fis {
-		fmt.Println(f.IsDir(), f.Name())
-	}
-	handleError(err)
+	HandleError(err, " :unable to read given directory")
+
 	for _, fi := range fis {
 		curPath := dirPath + "/" + fi.Name()
 		if fi.IsDir() {
 			ScanDir(curPath, tw)
 		} else {
-			fmt.Printf("adding... %s\n", curPath)
 			TarWrite(curPath, tw, fi)
 		}
 	}
 }
 
-func handleError(_e error) {
-	if _e != nil {
-		log.Fatal(_e)
-	}
-}
-
-func TarWrite(_path string, tw *tar.Writer, fi os.FileInfo) {
-	fr, err := os.Open(_path)
-	handleError(err)
+func TarWrite(path string, tw *tar.Writer, fi os.FileInfo) {
+	fr, err := os.Open(path)
+	HandleError(err, " :unable to read path for writing tarball")
 	defer fr.Close()
 
 	h := new(tar.Header)
-	h.Name = _path
+	h.Name = path
 	h.Size = fi.Size()
 	h.Mode = int64(fi.Mode())
 	h.ModTime = fi.ModTime()
 
 	err = tw.WriteHeader(h)
-	handleError(err)
+	HandleError(err, " :unable to write tarball header")
 
 	_, err = io.Copy(tw, fr)
-	handleError(err)
+	HandleError(err, " :unable to copy files to tarball")
 }
