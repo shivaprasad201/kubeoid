@@ -1,62 +1,91 @@
 package cmd
 
 import (
-	"bufio"
+	"archive/tar"
+	"bytes"
+	"context"
+	"fmt"
 	"io"
 	"log"
-	"strings"
-	"time"
+	"os"
 
 	"github.com/docker/docker/api/types"
 	"github.com/docker/docker/client"
-	"golang.org/x/net/context"
 )
 
-//BuildImage builds the container image
-func BuildImage(dockerBuildCtxDir, tagName string) error {
-	ctx, cancel := context.WithTimeout(context.Background(), time.Duration(300)*time.Second)
-	defer cancel()
-	dockerFileTarReader := strings.NewReader(dockerBuildCtxDir)
-
-	// buildArgs := make(map[string]*string)
-	// add any build args if you want to
-	// buildArgs["ENV"] = os.Getenv("GO_ENV")
-
+func BuildImage(buildContextDir, tagName string) {
+	ctx := context.Background()
 	cli, err := client.NewEnvClient()
 	if err != nil {
-		panic(err)
+		log.Fatal(err, " :unable to init client")
 	}
 
-	resp, err := cli.ImageBuild(
+	buf := new(bytes.Buffer)
+	tw := tar.NewWriter(buf)
+	defer tw.Close()
+
+	ScanDir(buildContextDir, tw)
+
+	tarReader := bytes.NewReader(buf.Bytes())
+
+	imageBuildResponse, err := cli.ImageBuild(
 		ctx,
-		dockerFileTarReader,
+		tarReader,
 		types.ImageBuildOptions{
+			Context:    tarReader,
 			Dockerfile: "Dockerfile",
 			Tags:       []string{tagName},
-			NoCache:    true,
-			Remove:     true,
-			// BuildArgs:  buildArgs,
-		}) //cli is the docker client instance created from the engine-api
+			Remove:     true})
 	if err != nil {
-		log.Println(dockerFileTarReader)
-		log.Println(err, " :unable to build docker image")
-		return err
+		log.Fatal(err, " :unable to build docker image")
 	}
-	return writeToLog(resp.Body)
+	defer imageBuildResponse.Body.Close()
+	_, err = io.Copy(os.Stdout, imageBuildResponse.Body)
+	if err != nil {
+		log.Fatal(err, " :unable to read image build response")
+	}
 }
 
-//writes from the build response to the log
-func writeToLog(reader io.ReadCloser) error {
-	defer reader.Close()
-	rd := bufio.NewReader(reader)
-	for {
-		n, _, err := rd.ReadLine()
-		if err != nil && err == io.EOF {
-			break
-		} else if err != nil {
-			return err
-		}
-		log.Println(string(n))
+func ScanDir(dirPath string, tw *tar.Writer) {
+	dir, err := os.Open(dirPath)
+	handleError(err)
+	defer dir.Close()
+	fis, err := dir.Readdir(0)
+	for _, f := range fis {
+		fmt.Println(f.IsDir(), f.Name())
 	}
-	return nil
+	handleError(err)
+	for _, fi := range fis {
+		curPath := dirPath + "/" + fi.Name()
+		if fi.IsDir() {
+			ScanDir(curPath, tw)
+		} else {
+			fmt.Printf("adding... %s\n", curPath)
+			TarWrite(curPath, tw, fi)
+		}
+	}
+}
+
+func handleError(_e error) {
+	if _e != nil {
+		log.Fatal(_e)
+	}
+}
+
+func TarWrite(_path string, tw *tar.Writer, fi os.FileInfo) {
+	fr, err := os.Open(_path)
+	handleError(err)
+	defer fr.Close()
+
+	h := new(tar.Header)
+	h.Name = _path
+	h.Size = fi.Size()
+	h.Mode = int64(fi.Mode())
+	h.ModTime = fi.ModTime()
+
+	err = tw.WriteHeader(h)
+	handleError(err)
+
+	_, err = io.Copy(tw, fr)
+	handleError(err)
 }
