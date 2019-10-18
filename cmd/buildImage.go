@@ -5,30 +5,23 @@ import (
 	"bytes"
 	"context"
 	"io"
-	"log"
 	"os"
 
 	"github.com/docker/docker/api/types"
 	"github.com/docker/docker/client"
 )
 
-func HandleError(e error, msg string) {
-	if e != nil {
-		log.Fatal(e, msg)
-	}
-}
-
-func BuildImage(buildContextDir, tagName string) {
+func buildImage(buildContextDir, tagName string) {
 
 	ctx := context.Background()
 	cli, err := client.NewEnvClient()
-	HandleError(err,  ":unable to init client")
+	HandleError(err, ":unable to init client")
 
 	buf := new(bytes.Buffer)
 	tw := tar.NewWriter(buf)
 	defer tw.Close()
 
-	ScanDir(buildContextDir, tw)
+	scanDir(buildContextDir, tw)
 
 	tarReader := bytes.NewReader(buf.Bytes())
 
@@ -47,7 +40,7 @@ func BuildImage(buildContextDir, tagName string) {
 	HandleError(err, " :unable to read image build response")
 }
 
-func ScanDir(dirPath string, tw *tar.Writer) error {
+func scanDir(dirPath string, tw *tar.Writer) {
 	dir, err := os.Open(dirPath)
 	HandleError(err, " :unable open the given path for reading")
 	defer dir.Close()
@@ -58,14 +51,14 @@ func ScanDir(dirPath string, tw *tar.Writer) error {
 	for _, fi := range fis {
 		curPath := dirPath + "/" + fi.Name()
 		if fi.IsDir() {
-			ScanDir(curPath, tw)
+			scanDir(curPath, tw)
 		} else {
-			TarWrite(curPath, tw, fi)
+			tarWrite(curPath, tw, fi)
 		}
 	}
 }
 
-func TarWrite(path string, tw *tar.Writer, fi os.FileInfo) {
+func tarWrite(path string, tw *tar.Writer, fi os.FileInfo) {
 	fr, err := os.Open(path)
 	HandleError(err, " :unable to read path for writing tarball")
 	defer fr.Close()

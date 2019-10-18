@@ -18,7 +18,7 @@ var cmdBuild = &cobra.Command{
 Echo works a lot like print, except it has a child command.`,
 	Args: cobra.MinimumNArgs(0),
 	Run: func(cmd *cobra.Command, args []string) {
-		BuildImage(".", "test")
+		BuildImage(".", "test:v1")
 	},
 }
 
@@ -49,5 +49,12 @@ func Execute() {
 	if err := rootCmd.Execute(); err != nil {
 		fmt.Println(err)
 		os.Exit(1)
+	}
+}
+
+ // HandleError logs the error and the message to the console
+func HandleError(e error, msg string) {
+	if e != nil {
+		log.Fatal(e, msg)
 	}
 }
