@@ -12,10 +12,9 @@ func init() {
 }
 
 var cmdBuild = &cobra.Command{
-	Use:   "build [string to echo]",
-	Short: "Echo anything to the screen",
-	Long: `echo is for echoing anything back.
-Echo works a lot like print, except it has a child command.`,
+	Use:   "build",
+	Short: "Builds your container image",
+	Long: `Build command builds your container images based on the configuration in the kubeoid.yaml file.`,
 	Args: cobra.MinimumNArgs(0),
 	Run: func(cmd *cobra.Command, args []string) {
 		BuildImage(".", "test:v1")
@@ -23,10 +22,9 @@ Echo works a lot like print, except it has a child command.`,
 }
 
 var cmdDeploy = &cobra.Command{
-	Use:   "deploy [string to echo]",
-	Short: "Echo anything to the screen",
-	Long: `echo is for echoing anything back.
-Echo works a lot like print, except it has a child command.`,
+	Use:   "deploy",
+	Short: "Deploys your container image to minikube",
+	Long: `Deploy command deploys your container image to the local minikube cluster.`,
 	Args: cobra.MinimumNArgs(0),
 	Run: func(cmd *cobra.Command, args []string) {
 		CreateDeploy()
@@ -40,7 +38,7 @@ var rootCmd = &cobra.Command{
 			Complete documentation is available at http://kubeoid.io`,
 	Run: func(cmd *cobra.Command, args []string) {
 		// Do Stuff Here
-		fmt.Println("Hello this is a test entry")
+		fmt.Println("Hello from kubeoid to get started type 'kubeoid --help'")
 	},
 }
 
