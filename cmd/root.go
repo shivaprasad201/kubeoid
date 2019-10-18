@@ -3,6 +3,7 @@ package cmd
 import (
 	"fmt"
 	"os"
+	"log"
 
 	"github.com/spf13/cobra"
 )
@@ -17,7 +18,7 @@ var cmdBuild = &cobra.Command{
 	Long: `Build command builds your container images based on the configuration in the kubeoid.yaml file.`,
 	Args: cobra.MinimumNArgs(0),
 	Run: func(cmd *cobra.Command, args []string) {
-		BuildImage(".", "test:v1")
+		buildImage(".", "test:v1")
 	},
 }
 
@@ -35,7 +36,7 @@ var rootCmd = &cobra.Command{
 	Use:   "kubeoid",
 	Short: "kubeoid is a simple build and deployment tool for local development on minikube",
 	Long: `A simple tool that lets you build your application container images and deploy them on to your local kubernetes cluster.
-			Complete documentation is available at http://kubeoid.io`,
+Complete documentation is available at http://kubeoid.io`,
 	Run: func(cmd *cobra.Command, args []string) {
 		// Do Stuff Here
 		fmt.Println("Hello from kubeoid to get started type 'kubeoid --help'")
